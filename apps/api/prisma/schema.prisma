@@ -1,0 +1,84 @@
+// Orders Console schema.
+//
+// Two guarantees are enforced here rather than in application code:
+//   R2  a UNIQUE index on orders.idempotency_key makes a duplicate create
+//       impossible even when two requests race inside one transaction window.
+//   R1  composite indexes ordered (sort_col DESC, id DESC) match the keyset
+//       pagination predicate exactly, so every page is an index range scan.
+//
+// Trigram (GIN) indexes for case-insensitive substring search cannot be
+// expressed in Prisma schema syntax; they live in the hand-edited migration
+// alongside `CREATE EXTENSION pg_trgm`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  agent
+}
+
+enum OrderStatus {
+  pending
+  paid
+  shipped
+  delivered
+  cancelled
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  orders Order[]
+
+  @@map("users")
+}
+
+model Order {
+  id            String      @id @default(uuid()) @db.Uuid
+  customerName  String      @map("customer_name")
+  customerEmail String      @map("customer_email")
+  status        OrderStatus @default(pending)
+  totalAmount   Decimal     @map("total_amount") @db.Decimal(12, 2)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // Null for seeded/legacy rows. Postgres allows unlimited NULLs under a
+  // UNIQUE index, so only real client-supplied keys are constrained.
+  idempotencyKey String? @unique @map("idempotency_key")
+  // SHA-256 of the canonical request body, used to tell an honest retry
+  // (same key, same body -> 200) from key reuse (same key, different body -> 422).
+  requestHash    String? @map("request_hash")
+
+  createdById String? @map("created_by_id") @db.Uuid
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  items OrderItem[]
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([totalAmount(sort: Desc), id(sort: Desc)])
+  @@index([status, totalAmount(sort: Desc), id(sort: Desc)])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  orderId     String  @map("order_id") @db.Uuid
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productName String  @map("product_name")
+  quantity    Int
+  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@map("order_items")
+}

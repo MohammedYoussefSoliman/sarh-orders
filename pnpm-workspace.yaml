@@ -1,0 +1,16 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm blocks third-party build scripts unless they are approved here. These
+# fetch native binaries (Prisma's query engine, esbuild), so a fresh clone needs
+# them allowed or `pnpm install` leaves the repo unusable.
+#
+# NOTE: this is NOT what generates the Prisma client. That is an explicit
+# `postinstall` in apps/api, because the @prisma/client postinstall cannot find
+# our schema from inside the pnpm store.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  esbuild: true

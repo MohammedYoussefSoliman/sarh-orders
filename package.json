@@ -1,0 +1,30 @@
+{
+  "name": "sarh-orders",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @sarh/api exec prisma migrate deploy",
+    "db:reset": "dotenv -e .env -- pnpm --filter @sarh/api exec prisma migrate reset --force",
+    "seed": "dotenv -e .env -- pnpm --filter @sarh/api run seed",
+    "dev": "dotenv -e .env -- pnpm --parallel --filter @sarh/api --filter @sarh/web run dev",
+    "dev:api": "dotenv -e .env -- pnpm --filter @sarh/api run dev",
+    "dev:web": "pnpm --filter @sarh/web run dev",
+    "build": "pnpm --filter @sarh/shared run build && pnpm --filter @sarh/api run build && pnpm --filter @sarh/web run build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "test:e2e": "dotenv -e .env -- pnpm --filter @sarh/api run test:e2e",
+    "proof:duplicates": "bash scripts/duplicate-proof.sh",
+    "db:migrate:dev": "dotenv -e .env -- pnpm --filter @sarh/api exec prisma migrate dev",
+    "db:studio": "dotenv -e .env -- pnpm --filter @sarh/api exec prisma studio",
+    "prepare": "pnpm --filter @sarh/shared run build"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0"
+  }
+}
